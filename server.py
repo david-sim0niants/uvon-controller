@@ -2,12 +2,11 @@ import socket as sock
 import numpy as np
 import io
 from csi_camera import *
-from client import get_local_address
 
 
 if __name__ == '__main__':
 
-    local_address = get_local_address()
+    local_address = ('10.42.0.1', 1235)
 
     server = sock.socket(sock.AF_INET, sock.SOCK_DGRAM)
     server.bind(local_address)
@@ -23,8 +22,19 @@ if __name__ == '__main__':
         res, img = next(csi)
         if not res:
             continue
-        buffer = io.BytesIO() 
-        np.save(buffer, img)
-        img_bytes = buffer.getvalue()
-        server.sendto(len(img_bytes).to_bytes(4, byteorder='big', signed=True) + img_bytes, client_address)
+
+        width_b = img.shape[1].to_bytes(2, 'big')
+        height_b = img.shape[0].to_bytes(2, 'big')
+        if len(img.shape) > 2:
+            channels_b = img.shape[2].to_bytes(1, 'big')
+        else:
+            channels_b = bytes([1])
+        dtype_b = img.dtype.char.encode()[:1]
+
+        server.sendto(width_b + height_b + channels_b + dtype_b, client_address)
+
+        img_bytes = img.data.to_bytes()
+        packet_size = 4096
+        for packet in range(0, len(img_bytes) + packet_size, packet_size):
+            server.sendto(img_bytes[packet:packet + packet_size], client_address)
 

@@ -26,13 +26,23 @@ if __name__ == '__main__':
             cv2.destroyAllWindows()
             break
 
-        client.sendto([0x01], server_address)
+        client.sendto(bytes([0x01]), server_address)
 
-        header = client.recv(4)
-        bytes_len = int.from_bytes(header)
+        width = int.from_bytes(client.recv(2), 'big')
+        height = int.from_bytes(client.recv(2), 'big')
+        channels = int.from_bytes(client.recv(1), 'big')
+        dtype = np.dtype(client.recv(1).decode())
 
-        img_bytes = client.recv(bytes_len)
-        img = np.load(io.BytesIO(img_bytes))
+        bytes_len = width * height * channels * dtype.itemsize
+        print(bytes_len)
+
+        img_bytes = bytearray(bytes_len)
+        num_bytes_filled = 0
+        while num_bytes_filled < bytes_len:
+            img_bytes[num_bytes_filled:num_bytes_filled + 4096] = client.recv(4096)
+            num_bytes_filled += 4096
+
+        img = np.frombuffer(img_bytes, dtype=dtype).reshape(height, width, channels)
 
         cv2.imshow('camera', img)
 
