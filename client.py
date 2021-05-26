@@ -13,25 +13,26 @@ def get_local_address():
     return address
 
 
-local_address = get_local_address()
+if __name__ == '__main__':
 
-client = sock.socket(sock.AF_INET, sock.SOCK_DGRAM)
-client.bind(('127.0.0.1', local_address[1]))
+    local_address = get_local_address()
+    server_address = (sys.argv[1], int(sys.argv[2]))
 
-while True:
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        cv2.destroyAllWindows()
-        break
+    client = sock.socket(sock.AF_INET, sock.SOCK_DGRAM)
+    client.bind(local_address)
 
-    client_ip_bytes = bytes(int(x) for x in local_address[0].split('.'))
-    client_port_bytes = local_address[1].to_bytes(2, 'big')
-    client.sendto(client_ip_bytes + client_port_bytes, (sys.argv[1], int(sys.argv[2])))
+    while True:
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            cv2.destroyAllWindows()
+            break
 
-    header = client.recv(4)
-    bytes_len = int.from_bytes(header)
+        client.sendto([0x01], server_address)
 
-    img_bytes = client.recv(bytes_len)
-    img = np.load(io.BytesIO(img_bytes))
+        header = client.recv(4)
+        bytes_len = int.from_bytes(header)
 
-    cv2.imshow('camera', img)
+        img_bytes = client.recv(bytes_len)
+        img = np.load(io.BytesIO(img_bytes))
+
+        cv2.imshow('camera', img)
 
