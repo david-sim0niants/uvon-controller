@@ -3,9 +3,12 @@ import numpy as np
 import io
 from csi_camera import *
 import time
+import struct
 
 
 if __name__ == '__main__':
+
+    PACKET_SIZE = 2 ** 15
 
     local_address = ('10.42.0.1', 1235)
     # local_address = ('127.0.0.1', 1235)
@@ -14,11 +17,10 @@ if __name__ == '__main__':
     server.bind(local_address)
     server.setsockopt(sock.SOL_SOCKET, sock.SO_REUSEADDR, 10)
 
-    csi = start_capturing()
+    csi = start_capturing(flip_method=2)
 
     while True:
         client_data, client_address = server.recvfrom(1)
-        print(client_data)
         if not client_data[0]:
             continue
 
@@ -26,24 +28,17 @@ if __name__ == '__main__':
         if not res:
             continue
 
-        width_b = img.shape[1].to_bytes(2, 'big')
-        height_b = img.shape[0].to_bytes(2, 'big')
-        if len(img.shape) > 2:
-            channels_b = img.shape[2].to_bytes(1, 'big')
-        else:
-            channels_b = bytes([1])
-        dtype_b = img.dtype.char.encode()[:1]
+        img_encoded = cv2.imencode('.jpg', img)[1].tobytes()
 
-        server.sendto(width_b + height_b + channels_b + dtype_b, client_address)
+        size = len(img_encoded)
+        num_packs = int(np.ceil(size / (PACKET_SIZE - 1)))
+        packet_begin = 0
+        
+        while num_packs:
+            packet_end = packet_begin + PACKET_SIZE
+            server.sendto(struct.pack('B', num_packs) + img_encoded[packet_begin:packet_end], client_address)
+            packet_begin = packet_end
+            num_packs -= 1
 
-        img_bytes = img.data.tobytes()
-        print(np.product(img.shape))
-        packet_size = 32768
-        num_packs_sent = 0
-        for packet in range(0, len(img_bytes) + packet_size, packet_size):
-            server.sendto(img_bytes[packet:packet + packet_size], client_address)
-            print(time.time(), img_bytes[packet:packet + 10])
-            num_packs_sent += 1
-        print(num_packs_sent)
-
-
+        
+        

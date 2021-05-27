@@ -3,6 +3,7 @@ import numpy as np
 import io
 import sys
 import cv2
+import struct
 import time
 
 
@@ -15,6 +16,8 @@ def get_local_address():
 
 
 if __name__ == '__main__':
+
+    PACKET_SIZE = 2 ** 15
 
     local_address = get_local_address()
     # local_address = ('127.0.0.1', 1234)
@@ -29,36 +32,21 @@ if __name__ == '__main__':
             break
 
         client.sendto(bytes([0x01]), server_address)
+        img_data = b''
+        while True:
+            packet, _ = client.recvfrom(PACKET_SIZE)
+            packs_left = struct.unpack('B', packet[:1])[0]
+            img_data += packet[1:]
+            if packs_left <= 1:
+                break
 
-        header = client.recv(6)
-
-        width = int.from_bytes(header[:2], 'big')
-        height = int.from_bytes(header[2:4], 'big')
-        channels = int.from_bytes(header[4:5], 'big')
-        dtype = np.dtype(header[5:6].decode())
-
-        print(width, height, channels, dtype)
-
-        bytes_len = width * height * channels * dtype.itemsize
-        print(bytes_len / dtype.itemsize)
-
-        img_bytes = bytearray(bytes_len)
-        num_bytes_filled = 0
-        num_packs_recieved = 0
-        packet_size = 32768
-
-        bytes_len_floor = bytes_len + packet_size
-        while num_bytes_filled < bytes_len_floor:
-            packet = client.recv(packet_size)
-            img_bytes[num_bytes_filled:num_bytes_filled + packet_size] = packet
-            num_bytes_filled += packet_size
-            num_packs_recieved += 1
-            print(num_packs_recieved)
-        img_bytes = img_bytes[:bytes_len]
-        
-
-        img = np.frombuffer(img_bytes, dtype=dtype).reshape(height, width, channels)
+        img = cv2.imdecode(np.frombuffer(img_data, 'uint8'), cv2.IMREAD_COLOR)
 
         cv2.imshow('camera', img)
-        cv2.waitKey(0)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            cv2.destroyAllWindows()
+            break
+
+    client.close()
+
 
