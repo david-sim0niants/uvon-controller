@@ -5,6 +5,7 @@ import sys
 import cv2
 import struct
 import time
+import atexit
 
 
 def get_local_address():
@@ -26,6 +27,9 @@ if __name__ == '__main__':
     client = sock.socket(sock.AF_INET, sock.SOCK_DGRAM)
     client.bind(local_address)
 
+    video_writer = cv2.VideoWriter(sys.argv[3], cv2.VideoWriter_fourcc(*'MJPG'), 20, (600, 400))
+    atexit.register(lambda: video_writer.release())
+
     while True:
         if cv2.waitKey(1) & 0xFF == ord('q'):
             cv2.destroyAllWindows()
@@ -41,6 +45,7 @@ if __name__ == '__main__':
                 break
 
         img = cv2.imdecode(np.frombuffer(img_data, 'uint8'), cv2.IMREAD_COLOR)
+        video_writer.write(img)
 
         cv2.imshow('camera', img)
         if cv2.waitKey(1) & 0xFF == ord('q'):
