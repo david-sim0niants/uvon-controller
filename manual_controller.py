@@ -1,4 +1,3 @@
-import rplidar as lidar
 import socket as sock
 import sys
 import time
