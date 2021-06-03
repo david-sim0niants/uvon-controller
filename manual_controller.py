@@ -12,8 +12,8 @@ disable_move_cmd = b'2\n'
 enable_uv_cmd = b'I1\n'
 disable_uv_cmd = b'I0\n'
 
-forward_cmd = b'm1,15,0,15\n'
-backward_cmd = b'm0,15,1,15\n'
+forward_cmd = b'm1,23,0,23\n'
+backward_cmd = b'm0,23,1,23\n'
 left_cmd = b'm0,17,0,17\n'
 right_cmd = b'm1,17,1,17\n'
 stop_cmd = b'm1,1,1,1\n'
@@ -37,7 +37,7 @@ def server_side(address, dev_port, record_name=None):
     move_enabled = False
     last_move_cmd = None
 
-    atexit.register(lambda: dev.write(disable_uv_cmd) if uv_enabled else None)
+    atexit.register(lambda: dev.write(disable_uv_cmd)) 
     atexit.register(lambda: dev.write(disable_move_cmd) if move_enabled else None)
 
     video_writer = None
@@ -94,7 +94,8 @@ def client_side(address, server_address):
         '1': enable_move_cmd,
         '2': disable_move_cmd,
 
-        'i': enable_move_cmd,
+        'i': enable_uv_cmd,
+        'o': disable_uv_cmd,
 
         'p': video_cmd,
     }

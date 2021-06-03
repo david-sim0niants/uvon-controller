@@ -30,9 +30,17 @@ def gstreamer_pipeline(
 
 
 
-def start_capturing(**cam_params):
+def start_capturing(record_name=None, **cam_params):
     cam = cv2.VideoCapture(gstreamer_pipeline(**cam_params), cv2.CAP_GSTREAMER)
 
+    if record_name is not None: 
+        video_writer = cv2.VideoWriter(record_name, cv2.VideoWriter_fourcc(*'MJPG'), 60, (600, 400))
+        yield video_writer
+
     while True:
-        yield cam.read()
+        ret, frame = cam.read()
+        if record_name is not None:
+            video_writer.write(frame)
+
+        yield ret, frame
     
